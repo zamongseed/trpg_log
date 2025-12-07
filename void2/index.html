@@ -5,98 +5,95 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Iropke+Batang&display=swap');
 
-/* 기본 레이아웃 & 폰트 */
-body { background-color: #fcfcfc !important; color: #333 !important; margin: 0 !important; padding: 20px !important; max-width: 100% !important; width: 100% !important; overflow-x: hidden !important; touch-action: pan-y !important; -webkit-overflow-scrolling: touch !important; }
+/* 기본 설정 */
+body { 
+    background-color: #fcfcfc !important; 
+    color: #333 !important; 
+    margin: 0 !important; 
+    padding: 20px !important; 
+    max-width: 100% !important; 
+    width: 100% !important; 
+    overflow-x: hidden !important; 
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important; 
+}
 * { font-family: 'Iropke Batang', serif !important; line-height: 1.8 !important; letter-spacing: -0.03em !important; box-sizing: border-box; }
 
-/* 대화 상자 스타일 */
+/* [수정됨] 대화 상자 스타일 (안정성 강화) */
 .gap {
-    /* 레이아웃 안정화 */
-    content-visibility: auto !important; 
-    contain-intrinsic-size: 100px !important; 
-    contain: layout style paint !important;
+    /* content-visibility 삭제! -> 스크롤 튀는 현상 원천 차단 */
+    /* 대신 레이아웃 격리만 유지 */
+    contain: layout style; 
     
     display: flex !important;
     align-items: flex-start !important;
     padding: 20px 0 !important; 
     border-bottom: 1px dashed #e0e0e0 !important;
     background-color: transparent !important;
-    
-    /* 위치 추적을 위한 상대 좌표 설정 */
     position: relative;
+    
+    /* 부드러운 배경색 전환 효과 */
+    transition: background-color 1s ease;
 }
 
-/* 프로필 사진 & 텍스트 */
+/* 읽던 위치 강조 효과 (노란색 반짝) */
+.highlight-read {
+    background-color: rgba(255, 235, 59, 0.5) !important;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+}
+
 .msg_container { flex-shrink: 0 !important; width: 60px !important; height: auto !important; margin-right: 15px !important; display: flex !important; justify-content: center !important; background: transparent !important; border: none !important; }
 p { flex-grow: 1 !important; color: #2b2b2b !important; margin: 0 !important; word-break: keep-all !important; overflow-wrap: break-word !important; }
 .msg_container img[src] { width: 50px !important; height: 50px !important; object-fit: cover !important; background-color: #222 !important; border-radius: 4px !important; padding: 1px !important; box-shadow: none !important; }
 
-/* 숨김 처리 */
 img:not([src]), img[alt*="GM"], img[alt*="gm"], img[alt*="system"], img[alt*="System"], .msg_container > div, hr { display: none !important; }
-
-/* 텍스트 꾸밈 */
 b { display: block; color: #ccc !important; font-size: 0.75em !important; font-weight: normal !important; margin-top: 5px !important; margin-left: 0 !important; }
 span[style*="font-weight: bold"] { font-weight: 700 !important; font-size: 1.05em !important; }
 
-/* [강조 효과] 위치 찾았을 때 반짝임 */
-@keyframes highlight-flash {
-    0%, 100% { background-color: transparent; }
-    50% { background-color: rgba(255, 235, 59, 0.4); }
-}
-.target-active { animation: highlight-flash 1s ease-in-out 3; }
-
-/* [이어보기 버튼] */
+/* 이어보기 버튼 */
 #resume-btn {
     position: fixed; bottom: 30px; right: 20px; 
     background-color: #222; color: #fff; 
-    padding: 12px 20px; border-radius: 50px; 
+    padding: 12px 24px; border-radius: 50px; 
     font-size: 14px; font-weight: bold; 
     box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
     z-index: 9999; cursor: pointer; display: none;
-    border: 1px solid #444;
+    border: 1px solid #444; opacity: 0.9;
 }
 .nav-btn { display: block; margin: 50px auto; padding: 15px 30px; background: #333; color: #fff; text-decoration: none; border-radius: 5px; text-align: center; width: 80%; font-weight: bold; }
 </style>
 
 <script>
-// 브라우저 자동 스크롤 복원 끄기 (충돌 방지)
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 document.addEventListener("DOMContentLoaded", function() {
     
-    // [기능 1] 위치 저장 (화면 중앙에 있는 메시지 번호 기억)
+    // [기능 1] 위치 저장 (화면 중앙에 있는 메시지 ID 기억)
     // -----------------------------------------------------
-    let saveTimeout;
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                // 현재 화면에 보이는 요소의 ID (예: "msg-150") 가져오기
-                const visibleId = entry.target.id;
-                
-                clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(() => {
-                    // ID에서 숫자만 추출해서 저장
-                    if (visibleId) {
-                        localStorage.setItem('trpg_last_read_id', visibleId);
-                        // console.log("저장됨:", visibleId); // 디버깅용
-                    }
-                }, 500);
+                // 화면 중앙에 온 메시지의 ID (예: msg-150) 저장
+                localStorage.setItem('trpg_last_read_id', entry.target.id);
             }
         });
-    }, { rootMargin: "-40% 0px -40% 0px" }); // 화면 정중앙 20% 영역만 감지 (정확도 향상)
+    }, { rootMargin: "-45% 0px -45% 0px" }); // 화면 정중앙 10% 영역만 감지 (매우 정밀)
 
     const allGaps = document.querySelectorAll('.gap');
     allGaps.forEach(gap => observer.observe(gap));
 
 
-    // [기능 2] 위치 복구 (끈질기게 추적)
+    // [기능 2] 위치 복구 (노란색 형광펜 효과)
     // -----------------------------------------------------
     const lastId = localStorage.getItem('trpg_last_read_id');
     
     if (lastId) {
         const target = document.getElementById(lastId);
+        
+        // 현재 페이지에 저장된 ID가 존재한다면?
         if (target) {
-            // (1) 이어보기 버튼 표시
+            // (1) 이어보기 버튼 만들기
             const btn = document.createElement('div');
             btn.id = 'resume-btn';
             btn.innerHTML = '📍 읽던 곳으로 이동';
@@ -104,22 +101,25 @@ document.addEventListener("DOMContentLoaded", function() {
             btn.style.display = 'block';
 
             // 이동 함수
-            const moveToTarget = () => {
-                target.scrollIntoView({behavior: "auto", block: "center"});
-                target.classList.add('target-active'); // 반짝임 효과
-                setTimeout(() => target.classList.remove('target-active'), 3000);
+            const jumpToTarget = () => {
+                // 부드럽지 않고 '즉시' 이동 (오차 줄이기 위해)
+                target.scrollIntoView({block: "center"});
+                
+                // 노란색 하이라이트 효과 2초간 줌
+                target.classList.add('highlight-read');
+                setTimeout(() => target.classList.remove('highlight-read'), 2000);
+                
                 btn.style.display = 'none';
             };
 
-            btn.addEventListener('click', moveToTarget);
+            btn.addEventListener('click', jumpToTarget);
 
-            // (2) 자동 이동 시도 (이미지 로딩으로 밀리는 것을 대비해 5번 반복 시도)
-            // 0초, 0.5초, 1초, 2초, 3초 뒤에 계속 위치를 바로잡습니다.
-            moveToTarget(); 
-            setTimeout(moveToTarget, 500);
-            setTimeout(moveToTarget, 1000);
-            setTimeout(moveToTarget, 2000);
-            setTimeout(moveToTarget, 3000);
+            // (2) 이미지 로딩으로 밀리는 것을 막기 위해 끈질기게 위치 사수
+            // 0.1초, 0.5초, 1초, 2초에 걸쳐 계속 제자리로 돌려놓음
+            jumpToTarget();
+            setTimeout(jumpToTarget, 500);
+            setTimeout(jumpToTarget, 1000);
+            setTimeout(jumpToTarget, 2000);
         }
     }
 
@@ -128,6 +128,8 @@ document.addEventListener("DOMContentLoaded", function() {
         const t = span.textContent.trim();
         if (['GM','gm','system','System','VOID'].includes(t)) { span.style.color='#000'; span.style.fontWeight='bold'; }
     });
+    
+    // 이미지 지연 로딩
     const imgObs = new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ e.target.loading="lazy"; e.target.decoding="async"; imgObs.unobserve(e.target); }}) });
     document.querySelectorAll('img').forEach(img=>imgObs.observe(img));
 });
@@ -8495,1119 +8497,6 @@ document.addEventListener("DOMContentLoaded", function() {
       <p style="color: rgb(221, 221, 221);">
         <span></span> <span style="color: rgb(103, 58, 183); font-weight: bold;">"페일 트라이던트"하가네즈카 류운</span><b> -
           2025/08/25</b><span> <br> </span><span> "아, 그래도."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-700" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/5neArjJOnRPcS6smE4RlNc7SVbX2/files/3719353df300a051e8f5984648f1cda8f0c0ee05269056e2d06e1cd114e0c484"
-          alt="" 페일 트라이던트"하가네즈카 류운"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(103, 58, 183); font-weight: bold;">"페일 트라이던트"하가네즈카 류운</span><b> -
-          2025/08/25</b><span> <br> </span><span> "싸운 건 내가 다 이겼어. 걱정마."(-)</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-701" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/7mkgACyjRMV9vansPxrQzRXnidR2/files/3afed40e2c731d93aef295e2f02d176eb735b94979c04ca6deadb4248dbb6a30"
-          alt="" 트리톤" 우미모리 하지메"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(109, 158, 235); font-weight: bold;">"트리톤" 우미모리 하지메</span><b> -
-          2025/08/25</b><span> <br> </span><span> "아, 역시 제 류운 님이시네요." (-)</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-702" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 믿고, 기다리며.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-703" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 또 의지하며.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-704" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 지울 수 없는 것들의 위로, 무언가가 쌓여갑니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-705" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> ✦장면을 종료합니다. ✦</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-706" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> ----------------------------------------------------------</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-707" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> ▶ 미들 페이즈 ◀</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-708" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> #Scene 4 : 한 꺼풀 아래</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-709" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> - 장면 플레이어 : "Detonator" 킨조 카이치 "피노키오" 피노</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-710" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> 1d10 【등장침식】💥(1D10) ＞ 1</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-711" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 두 PC만 등장. 등장 침식 굴려주세요.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-712" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(136, 136, 136); font-weight: bold;">system</span><b> -
-          2025/08/25</b><span> <br> </span><span> [ "데토네이터" 킨조 카이치 ] 침식률 : 37 → 38</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-713" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 1D10 　등장 침식💽(1D10) ＞ 7</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-714" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(136, 136, 136); font-weight: bold;">system</span><b> -
-          2025/08/25</b><span> <br> </span><span> [ "피노키오" 피노 ] 침식률 : 58 → 65</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-715" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(136, 136, 136); font-weight: bold;">system</span><b> -
-          2025/08/25</b><span> <br> </span><span> [ "피노키오" 피노 ] 침식D : 0 → 1</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-716" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 이후, 새로운 두 '멤버'와 함께.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-717" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 돌연 두 사람이 도착한 곳은 바로...</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-718" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 간 밤. 사건이 일어났던 현장. 쿠로다의 집 입니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-719" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/2b14d1ca014212d12248ab2572ea8e2f41a290987f561b71b06ec90f713d595a"
-          alt="레미"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(96, 125, 139); font-weight: bold;">레미</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "장소에 대한 정보를 얻어서, 차라리..."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-720" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> 곳곳에 쳐진 폴리스라인을 보다가 훌쩍 넘어갑니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-721" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/2b14d1ca014212d12248ab2572ea8e2f41a290987f561b71b06ec90f713d595a"
-          alt="레미"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(96, 125, 139); font-weight: bold;">레미</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "직접 두 눈으로 보는 편이 좋지 않겠나요?" 라는 제안에 의해 말이죠.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-722" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 공교롭게도 수사관들이 싹 쓸어가지도 않은 날것의 현장이라니.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-723" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "뭐, 경찰이라는건 수사의 권한을 지니잖아? 우리가 못 갈 이유가 없지."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-724" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 현장에 보이는 것은 폴리스 라인, 그리고 서 있는 경찰차 몇 대.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-725" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "현행범이라더니. 라인도 안 그어 놓고 테이프만 붙여두는 건 성의없네."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-726" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "근데...감식반 결과도 안 나올시간에 구치소 감금이라. 하하..."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-727" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "평소에도 이렇게 일처리가 빨랐다면 계장님이 기뻐하셨을텐데."<br></span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-728" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 인간 전문 형사 사건을 담당하는 경관들이 수사를 진행하고 있다, 등장한 여러분을 보곤 당황합니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-729" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "사정 청취도, 조서도, 진술서 작성도 어땠을지 알 수가 없네.."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-730" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/d6357e36d0d12d6cd8fc0b9b2ec3004369f43518fb68d524955ee284ce718266"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "안녕~" </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-731" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/d6357e36d0d12d6cd8fc0b9b2ec3004369f43518fb68d524955ee284ce718266"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 왜 그런 표정들이야?</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-732" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "안녕~수고가 많아~"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-733" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> 대체로 그들보단 고참일 킨조가 손을 흔들어보입니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-734" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "잠깐. 데토네이터님과...파트너 안드로이드?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-735" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/d6357e36d0d12d6cd8fc0b9b2ec3004369f43518fb68d524955ee284ce718266"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 방-긋.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-736" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "저 사람들 맞지? 이번에 용의자로 잡힌 그 사람과 같은 과소속."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-737" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "다 들리니까 답해주는 거지만. 맞아." </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-738" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "상황을 알 수 없어서 보러왔어."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-739" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "자, 자. 다들 쉬어가면서 해. 용의자 잡혔다며?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-740" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 이미 퍼진 '소문' 때문인지, 술렁거리면서도 넷에게 좀처럼 다가가지 못하고 있던 때...</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-741" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 성큼, 앞을 가로막는 이가 있습니다. ...어라,</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-742" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/SPT6INoNTdYstvk8dgyYpD5DeU72/files/87c886b77a56572f74282010b71474c010d7aa6c4ed47a08c06e89fc81b13fc0"
-          alt="GM"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(224, 224, 224); font-weight: bold;">GM</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 언젠가 본 적 있는 불량한 인상의 형사.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-743" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "하ㅡ아?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-744" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 얼라.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-745" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 눈을 깜빡, 깜빡. 쳐다봅니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-746" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "누군가 했더니, 그~악명높은 드로과 아니십니까~?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-747" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> ...잇쨩한테 못된 말 했던 사람.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-748" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "어라, 식당에서 행패...아니 강력반 형사님이시잖아?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-749" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 살짝, 잇쨩 옆에 붙습니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-750" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "예에, 드로과에서 수사 좀 나왔습니다." 피노 어깨에 손을 척 올려둡니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-751" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "왔습니다~" 브이.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-752" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "고생이 많네. 밤 샜나봐?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-753" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 그떄 제법 우스꽝스럽게 쫓겨난 것을 마음에 두기라도 했는지... 입을 비죽거리다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-754" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "아아, 어느 사고뭉치 신입 덕분에 말이죠~그런데,"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-755" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> " 안.드.로이드.과가 왜 이 곳에 왔습니까~?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-756" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "수사 명령 받고 나온거 맞아?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-757" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "아주 로봇까지 옆에 착 붙이곤...쯧!"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-758" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/fe58e8b41dea30b059673fb8f349c8ed4a71f62de95efd3ee679083506f9c5e4"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "어라. 과는 달라도 기본적인 원칙 상 '형사'가 현장을 드나들 수 있는 데에 제한은 없는데." </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-759" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/fe58e8b41dea30b059673fb8f349c8ed4a71f62de95efd3ee679083506f9c5e4"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "그렇지? 잇쨩."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-760" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "아까 주변에서 말하는거 못 들었어?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-761" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "그 잡혀간 녀석, 우리랑 행동하던 녀석이라."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-762" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "하하! 뭘 모르는 건 당신들 같은데? 경시청 내부에서 일어난 사건인만큼ㅡ"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-763" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "최소 당신들은. 사건에 들어가는 것이 금지되었다 이거야~!"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-764" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "그래! 그 말대로 같은 과잖아? 한통속일지 누가 알아?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-765" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/d8f49991bb00af6620ac930ac8cdcf752240298fbeff1aac2551b37ccfff51e3"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 교묘하게 잇쨩이 보지 못하는 각도에서 무표정으로 빤히 바라봅니다. </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-766" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/9307b7628b7ce10468048f3181265034d33056bfd4b81bb5fad4c8def14ea76c"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "나, 여기서 더 꼬리표 붙으면 곤란~해서. 알지?" 웃으면서 다가가, 어깨를 꽈아아악 쥡니다. </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-767" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/d8f49991bb00af6620ac930ac8cdcf752240298fbeff1aac2551b37ccfff51e3"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> '이건' 왜 보이드가 아니지? 귀찮은데.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-768" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 아! 아야아야! 아프다!! 그치만 눈부리부리뜨면서... "그으러니까..."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-769" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "사고를 치지 않고, 얌전히..!"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-770" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/9307b7628b7ce10468048f3181265034d33056bfd4b81bb5fad4c8def14ea76c"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "사람들이 자꾸 나랑 엮으니까. 나도 '노력했다' 라는 티는 내야~응?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-771" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "가주셨으면, 좋겠는데요 형.사.님!" 라면서 팍! 어깨의 손을 떨쳐냈던가, 혹은 피했던가.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-772" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 인상을 얼른 누그러뜨리고 잇쨩의 팔을 잡아끕니다. </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-773" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/9307b7628b7ce10468048f3181265034d33056bfd4b81bb5fad4c8def14ea76c"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> 어깨를 잡은 손은 장갑이 벗겨져 있습니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-774" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "에, 에잇 귀찮게!" 하고는 홱, 뒤를 돌아보면,</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-775" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "아이참. 잇쨩. 사이좋게-"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-776" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 그곳에는 그의 '파트너' 안드로이드가 있습니다.<br>"야!"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-777" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/9307b7628b7ce10468048f3181265034d33056bfd4b81bb5fad4c8def14ea76c"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> 팍! 쳐내면 순간 형사의 머리가 삐죽 섭니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-778" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "난 더러워서 못해먹겠으니, 니가 막아. 알았어? 명령이다!"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-779" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/9307b7628b7ce10468048f3181265034d33056bfd4b81bb5fad4c8def14ea76c"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "어이쿠, 정전기."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-780" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 위험했네. 위험했어-</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-781" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "다른 곳 보고올테니까 절ㅡ대로."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-782" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 어라..</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-783" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> "이 인간이랑 고물 들여보내지 말라고. 안그러면 넌 폐기야!"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-784" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(76, 175, 80); font-weight: bold;">식당의 형사</span><b> - 2025/08/25</b><span>
-          <br> </span><span> 하고는 허둥지둥 자리에서 도망치면...</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-785" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> "...." 그 안드로이드는,</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-786" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 그럼 잇쨩을 힐끔 보고 샐쭉 웃습니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-787" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> 식당에서와 별반 다르지 않은 표정으로.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-788" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/9307b7628b7ce10468048f3181265034d33056bfd4b81bb5fad4c8def14ea76c"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "어허, 누가 국가 소유물을 맘대로 폐기하나."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-789" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> 문 앞에 선 채, 둘을 쳐다봅니다.</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-790" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "안녕안녕? 친구 모델 이름은?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-791" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> "..."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-792" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "그때랑 구면이네. 다리는 괜찮지?" </span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-793" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> 앗, 잇쨩 섬세하네~</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-794" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "그때 넘어질때 좀 헐거워 보였는데."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-795" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> 답하지 않는가? 했지만, "...CX980 입니다."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-796" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> "다리는 수리하였으니 괜찮습니다. ...현장을 보러 오신 건가요?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-797" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/i7wY3Qz68DRvsQhLv1D5gXScvJX2/files/91c0ec79abf1f866bb8361f2a69281530a5fe18273a344685af38807a4a540ca"
-          alt="" 피노키오" 피노"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(170, 127, 169); font-weight: bold;">"피노키오" 피노</span><b> -
-          2025/08/25</b><span> <br> </span><span> "980.. 80.. 하레. 하레쨩이라고 할게?"</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-798" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img
-          src="https://storage.ccfolia-cdn.net/users/fSeGawg4VeftBQYxlaDYDGMf7ei1/files/dae2c7de1b46d749c88f8de3fc018aa2cc726b019e0c2dc47c56b7153caf0878"
-          alt="" 데토네이터" 킨조 카이치"
-          style="width: 40px; height: 40px; object-fit: cover; object-position: top center; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(3, 169, 244); font-weight: bold;">"데토네이터" 킨조 카이치</span><b> -
-          2025/08/25</b><span> <br> </span><span> "응, 그래."</span>
-      </p>
-    </div>
-    <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-
-    <div class="gap" id="msg-799" style="display: flex; background-color: transparent;">
-      <div class="msg_container"><img style="width: 40px; border-radius: 5px;"></div>
-      <p style="color: rgb(221, 221, 221);">
-        <span></span> <span style="color: rgb(255, 193, 7); font-weight: bold;">식당의 안드로이드</span><b> -
-          2025/08/25</b><span> <br> </span><span> "..." 이미 출입 금지 명령을 받은 안드로이드.</span>
       </p>
     </div>
     <hr style="margin: 0; padding: 0; border: 0; flex-shrink: 0; border-top: 1px solid rgba(255, 255, 255, 0.08);">
