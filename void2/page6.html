@@ -16,51 +16,64 @@ body {
     overflow-x: hidden !important; 
     touch-action: pan-y !important;
     -webkit-overflow-scrolling: touch !important; 
+    overflow-anchor: auto !important; 
 }
 * { font-family: 'Iropke Batang', serif !important; line-height: 1.8 !important; letter-spacing: -0.03em !important; box-sizing: border-box; }
 
-/* [수정됨] 대화 상자 스타일 (안정성 강화) */
+/* 이미지 공간 확보 */
+.msg_container { flex-shrink: 0 !important; width: 60px !important; min-height: 50px !important; margin-right: 15px !important; display: flex !important; justify-content: center !important; background: transparent !important; border: none !important; }
+.msg_container img { width: 50px !important; height: 50px !important; display: block !important; object-fit: cover !important; background-color: #eee !important; border-radius: 4px !important; padding: 1px !important; box-shadow: none !important; }
+.msg_container img.loaded { background-color: #222 !important; }
+
+/* 대화 상자 */
 .gap {
-    /* content-visibility 삭제! -> 스크롤 튀는 현상 원천 차단 */
-    /* 대신 레이아웃 격리만 유지 */
-    contain: layout style; 
-    
-    display: flex !important;
-    align-items: flex-start !important;
+    contain: layout style;
+    display: flex !important; 
+    align-items: flex-start !important; 
     padding: 20px 0 !important; 
     border-bottom: 1px dashed #e0e0e0 !important;
     background-color: transparent !important;
     position: relative;
-    
-    /* 부드러운 배경색 전환 효과 */
-    transition: background-color 1s ease;
 }
-
-/* 읽던 위치 강조 효과 (노란색 반짝) */
-.highlight-read {
-    background-color: rgba(255, 235, 59, 0.5) !important;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
-}
-
-.msg_container { flex-shrink: 0 !important; width: 60px !important; height: auto !important; margin-right: 15px !important; display: flex !important; justify-content: center !important; background: transparent !important; border: none !important; }
 p { flex-grow: 1 !important; color: #2b2b2b !important; margin: 0 !important; word-break: keep-all !important; overflow-wrap: break-word !important; }
-.msg_container img[src] { width: 50px !important; height: 50px !important; object-fit: cover !important; background-color: #222 !important; border-radius: 4px !important; padding: 1px !important; box-shadow: none !important; }
 
+/* 숨김 처리 */
 img:not([src]), img[alt*="GM"], img[alt*="gm"], img[alt*="system"], img[alt*="System"], .msg_container > div, hr { display: none !important; }
 b { display: block; color: #ccc !important; font-size: 0.75em !important; font-weight: normal !important; margin-top: 5px !important; margin-left: 0 !important; }
 span[style*="font-weight: bold"] { font-weight: 700 !important; font-size: 1.05em !important; }
 
-/* 이어보기 버튼 */
-#resume-btn {
+/* [기능] 이어보기 버튼 스타일 */
+#global-resume-btn {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background-color: #444; color: #fff; 
+    padding: 12px 30px; border-radius: 50px; 
+    font-size: 15px; font-weight: bold; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+    z-index: 10000; cursor: pointer; display: none;
+    border: 2px solid #fff; white-space: nowrap;
+    animation: bounce 2s infinite;
+}
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
+    40% {transform: translateX(-50%) translateY(-10px);}
+    60% {transform: translateX(-50%) translateY(-5px);}
+}
+
+/* 페이지 내 위치 이동 버튼 */
+#local-resume-btn {
     position: fixed; bottom: 30px; right: 20px; 
     background-color: #222; color: #fff; 
     padding: 12px 24px; border-radius: 50px; 
     font-size: 14px; font-weight: bold; 
     box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
     z-index: 9999; cursor: pointer; display: none;
-    border: 1px solid #444; opacity: 0.9;
+    border: 1px solid #444; opacity: 0.95;
 }
+
+/* 위치 강조 효과 */
+.highlight-read { animation: flash-yellow 2s ease-out forwards; }
+@keyframes flash-yellow { 0% { background-color: rgba(255, 235, 59, 0.6); } 100% { background-color: transparent; } }
+
 .nav-btn { display: block; margin: 50px auto; padding: 15px 30px; background: #333; color: #fff; text-decoration: none; border-radius: 5px; text-align: center; width: 80%; font-weight: bold; }
 </style>
 
@@ -69,67 +82,99 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 document.addEventListener("DOMContentLoaded", function() {
     
-    // [기능 1] 위치 저장 (화면 중앙에 있는 메시지 ID 기억)
-    // -----------------------------------------------------
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                // 화면 중앙에 온 메시지의 ID (예: msg-150) 저장
-                localStorage.setItem('trpg_last_read_id', entry.target.id);
-            }
-        });
-    }, { rootMargin: "-45% 0px -45% 0px" }); // 화면 정중앙 10% 영역만 감지 (매우 정밀)
-
-    const allGaps = document.querySelectorAll('.gap');
-    allGaps.forEach(gap => observer.observe(gap));
-
-
-    // [기능 2] 위치 복구 (노란색 형광펜 효과)
-    // -----------------------------------------------------
-    const lastId = localStorage.getItem('trpg_last_read_id');
+    // ===========================================================
+    // [기능 1] 페이지 기억 & 점프 (Global Resume)
+    // ===========================================================
+    // 현재 보고 있는 페이지의 파일명 (예: page3.html)
+    const currentPage = window.location.pathname.split("/").pop() || "index.html";
+    const FOLDER_KEY = 'trpg_last_page_' + window.location.pathname.split("/").slice(0, -1).join("/");
     
-    if (lastId) {
-        const target = document.getElementById(lastId);
+    // 저장된 마지막 페이지 가져오기
+    const lastPage = localStorage.getItem(FOLDER_KEY);
+
+    // 1. 만약 메인(index.html)에 왔는데, 기록된 건 다른 페이지(page3.html)라면?
+    // -> "3부로 이동하시겠습니까?" 버튼 띄우기
+    if (currentPage === "index.html" && lastPage && lastPage !== "index.html") {
+        const globalBtn = document.createElement('div');
+        globalBtn.id = 'global-resume-btn';
         
-        // 현재 페이지에 저장된 ID가 존재한다면?
-        if (target) {
-            // (1) 이어보기 버튼 만들기
-            const btn = document.createElement('div');
-            btn.id = 'resume-btn';
-            btn.innerHTML = '📍 읽던 곳으로 이동';
-            document.body.appendChild(btn);
-            btn.style.display = 'block';
+        // 페이지 번호 추출 (page3.html -> 3부)
+        let partNum = lastPage.replace('page', '').replace('.html', '');
+        globalBtn.innerHTML = '🚀 ' + partNum + '부부터 이어보기';
+        
+        document.body.appendChild(globalBtn);
+        globalBtn.style.display = 'block';
+        
+        globalBtn.addEventListener('click', function() {
+            window.location.href = lastPage;
+        });
+    }
 
-            // 이동 함수
-            const jumpToTarget = () => {
-                // 부드럽지 않고 '즉시' 이동 (오차 줄이기 위해)
-                target.scrollIntoView({block: "center"});
-                
-                // 노란색 하이라이트 효과 2초간 줌
-                target.classList.add('highlight-read');
-                setTimeout(() => target.classList.remove('highlight-read'), 2000);
-                
-                btn.style.display = 'none';
-            };
+    // 2. 현재 페이지를 "마지막 읽은 페이지"로 저장 (단, 3초 이상 머물렀을 때만)
+    // -> 실수로 메인 눌렀다고 기록이 날아가는 것 방지
+    setTimeout(function() {
+        localStorage.setItem(FOLDER_KEY, currentPage);
+    }, 3000);
 
-            btn.addEventListener('click', jumpToTarget);
 
-            // (2) 이미지 로딩으로 밀리는 것을 막기 위해 끈질기게 위치 사수
-            // 0.1초, 0.5초, 1초, 2초에 걸쳐 계속 제자리로 돌려놓음
-            jumpToTarget();
-            setTimeout(jumpToTarget, 500);
-            setTimeout(jumpToTarget, 1000);
-            setTimeout(jumpToTarget, 2000);
+    // ===========================================================
+    // [기능 2] 페이지 내 스크롤 위치 복구 (Local Resume)
+    // ===========================================================
+    const SCROLL_KEY = 'trpg_scroll_' + window.location.pathname;
+
+    // 이미지 로딩 처리
+    document.querySelectorAll('img').forEach(img => {
+        if(img.complete) img.classList.add('loaded');
+        else img.onload = () => img.classList.add('loaded');
+    });
+
+    // 폰트 로딩 대기 후 이동
+    document.fonts.ready.then(function() {
+        restorePosition();
+    });
+
+    function restorePosition() {
+        let lastId = null;
+        try { lastId = localStorage.getItem(SCROLL_KEY); } catch (e) {}
+
+        if (lastId) {
+            const target = document.getElementById(lastId);
+            if (target) {
+                const btn = document.createElement('div');
+                btn.id = 'local-resume-btn';
+                btn.innerHTML = '📍 읽던 줄로 이동';
+                document.body.appendChild(btn);
+                btn.style.display = 'block';
+
+                const jump = () => {
+                    target.scrollIntoView({block: "center"});
+                    target.classList.add('highlight-read');
+                    setTimeout(() => target.classList.remove('highlight-read'), 2500);
+                    btn.style.display = 'none';
+                };
+
+                btn.addEventListener('click', jump);
+                setTimeout(jump, 200); 
+            }
         }
     }
 
-    // [기타] GM 색상 & 이미지 최적화
+    // 현재 읽는 위치 저장
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                try { localStorage.setItem(SCROLL_KEY, entry.target.id); } catch (e) {}
+            }
+        });
+    }, { rootMargin: "-45% 0px -45% 0px" });
+
+    document.querySelectorAll('.gap').forEach(gap => observer.observe(gap));
+
+    // 기타 스타일
     document.querySelectorAll('span').forEach(span => {
         const t = span.textContent.trim();
         if (['GM','gm','system','System','VOID'].includes(t)) { span.style.color='#000'; span.style.fontWeight='bold'; }
     });
-    
-    // 이미지 지연 로딩
     const imgObs = new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ e.target.loading="lazy"; e.target.decoding="async"; imgObs.unobserve(e.target); }}) });
     document.querySelectorAll('img').forEach(img=>imgObs.observe(img));
 });
